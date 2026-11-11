@@ -1,0 +1,7 @@
+# Lint and analyzer versions for tools/lint.sh, installed by tools/lint-deps.sh (locally and in CI).
+# Dependabot opens pull requests for newer versions. These tools are not shipped to the Steam Frame.
+clang-format==23.1.5
+clang-tidy==23.1.4
+shellcheck-py==0.11.0.1
+hadolint-py==2.15.1.3
+semgrep==1.185.0

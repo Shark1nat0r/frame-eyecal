@@ -1,0 +1,83 @@
+# Bugs, wasted work and style. Every check that is off is listed with the reason.
+Checks: >
+  -*,
+  bugprone-*,
+  clang-analyzer-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  modernize-*,
+  misc-*,
+  cppcoreguidelines-*,
+  google-readability-casting,
+
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  -bugprone-unchecked-string-to-number-conversion,
+  -bugprone-signed-bitwise,
+  -bugprone-invalid-enum-default-initialization,
+  -clang-analyzer-optin.performance.Padding,
+  -performance-enum-size,
+  -performance-no-int-to-ptr,
+  -portability-avoid-pragma-once,
+
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -readability-braces-around-statements,
+  -readability-isolate-declaration,
+  -readability-implicit-bool-conversion,
+  -readability-math-missing-parentheses,
+  -modernize-use-trailing-return-type,
+  -modernize-avoid-c-arrays,
+  -cppcoreguidelines-avoid-c-arrays,
+  -modernize-avoid-variadic-functions,
+  -cppcoreguidelines-pro-type-vararg,
+  -cppcoreguidelines-avoid-do-while,
+  -cppcoreguidelines-pro-bounds-*,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-pro-type-union-access,
+  -cppcoreguidelines-owning-memory,
+  -cppcoreguidelines-avoid-non-const-global-variables,
+  -misc-non-private-member-variables-in-classes,
+  -misc-use-anonymous-namespace,
+  -readability-trailing-comma
+
+# Why these are off:
+#  bugprone-easily-swappable-parameters  coordinates (x0, y0, x1, y1) are naturally same-typed
+#  *-narrowing-conversions (bugprone)    reported once, by cppcoreguidelines-narrowing-conversions
+#  unchecked-string-to-number-conversion atoi/atof read our own messages and the tracker's log; 0 on garbage is fine
+#  bugprone-signed-bitwise               bit masks (unsure, flags) are ints in the APIs used
+#  invalid-enum-default-initialization  Vulkan/OpenXR structs are zero-initialised with {} by design of those APIs
+#  optin.performance.Padding             member order follows meaning, not size; the structs are few
+#  performance-enum-size                 a few enums, no arrays of them
+#  performance-no-int-to-ptr             OpenVR hands Vulkan handles over as uint64_t
+#  portability-avoid-pragma-once         every compiler used supports it
+#  identifier-length                     x, y, t, h, v are the domain's names in geometry and drawing code
+#  magic-numbers                         the screens are laid out in pixels; naming each coordinate hides the layout
+#  braces-around-statements, isolate-declaration
+#                                        the code keeps short statements and related declarations on one line;
+#                                        clang-format keeps that consistent
+#  implicit-bool-conversion              `if (!f)` for pointers and counts
+#  math-missing-parentheses              * before + needs no parentheses
+#  modernize-use-trailing-return-type    a minority style
+#  avoid-c-arrays                        fixed tables and the fixed-size buffers of C APIs
+#  variadic / pro-type-vararg            printf-style formatting; fmt() is checked by the compiler's format attribute
+#  avoid-do-while                        do { } while (0) in the XR()/VK() macros
+#  pro-bounds-*                          pixel buffers and C APIs need indexing and pointer arithmetic; the tests
+#                                        run with AddressSanitizer
+#  pro-type-reinterpret-cast, pro-type-union-access
+#                                        OpenXR's event and struct chains and the Vulkan clear values require them
+#  owning-memory                         FILE * and the other C API handles
+#  avoid-non-const-global-variables      the process-wide link, OpenXR instance and font
+#  misc-non-private-member-variables     plain data structs
+#  misc-use-anonymous-namespace          `static` for file-local functions (LLVM style)
+#  readability-trailing-comma            brace lists end without a comma
+CheckOptions:
+  # const for references and pointers; not for every local value
+  misc-const-correctness.AnalyzeValues: false
+  readability-simplify-boolean-expr.IgnoreMacros: true
+  misc-include-cleaner.IgnoreHeaders: 'vulkan/.*;openxr/.*;openvr\.h;freetype/.*;ft2build\.h;png\.h;pngconf\.h;bits/.*;asm-generic/.*'
+  readability-function-cognitive-complexity.IgnoreMacros: true
+WarningsAsErrors: '*'
+HeaderFilterRegex: '(src|tests)/.*'

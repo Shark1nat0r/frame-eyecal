@@ -1,0 +1,20 @@
+# Version updates for the CI tooling, none of which is shipped to the Steam Frame. Dependabot's vulnerability
+# alerts stay off on purpose: the release bundles no third-party libraries (see the shipped-deps job in
+# .github/workflows/build.yml).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7 # new releases wait a week, so a malicious or broken one is likely pulled before it reaches us
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7 # new releases wait a week, so a malicious or broken one is likely pulled before it reaches us
+    groups:
+      lint-tools:
+        patterns: ['*']

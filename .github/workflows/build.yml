@@ -1,0 +1,60 @@
+name: build
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  schedule:
+    # Weekly: the analyzers with Semgrep's current rules over the shipped code, and new OpenVR SDK releases
+    - cron: '17 5 * * 1'
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+jobs:
+  lint:
+    # Formatting, analyzers (clang-tidy, shellcheck, hadolint, semgrep) and the unit tests: tools/lint.sh with the
+    # versions pinned in requirements-lint.txt and tools/lint-deps.sh
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libfreetype-dev libpng-dev libvulkan-dev libopenxr-dev
+      - run: tools/lint-deps.sh
+      - run: tools/lint.sh
+  shipped-deps:
+    # The OpenVR SDK is the only third-party code compiled into the release; the libraries it loads on the headset
+    # come with SteamOS and SteamVR
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - run: tools/check-updates.sh --shipped
+  build:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && xargs -a build-deps.txt sudo apt-get install -y --no-install-recommends
+      - run: tests/run.sh
+      - run: ./compile.sh
+      - run: ./dist.sh "$(if [ "$GITHUB_REF_TYPE" = tag ]; then echo "$GITHUB_REF_NAME"; else git rev-parse --short HEAD; fi)"
+      - if: github.event_name != 'pull_request'
+        uses: actions/attest@v4
+        with:
+          subject-path: dist/frame-eyecal.tar.gz
+      - uses: actions/upload-artifact@v7
+        with:
+          name: frame-eyecal
+          path: |
+            dist/frame-eyecal.tar.gz
+            dist/frame-eyecal.tar.gz.sha256
+      - if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release create "$TAG" dist/frame-eyecal.tar.gz dist/frame-eyecal.tar.gz.sha256 --generate-notes

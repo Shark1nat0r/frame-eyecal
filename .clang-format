@@ -1,0 +1,17 @@
+# The code's own conventions: 4 spaces, 120 columns, short statements on one line
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 120
+AccessModifierOffset: -2
+PointerAlignment: Right
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+AllowShortLoopsOnASingleLine: true
+AllowShortBlocksOnASingleLine: Always
+AllowShortFunctionsOnASingleLine: All
+AllowShortLambdasOnASingleLine: All
+AllowShortCaseLabelsOnASingleLine: true
+AlignConsecutiveAssignments: None
+AlignTrailingComments: false
+SortIncludes: Never
+IncludeBlocks: Preserve
+QualifierAlignment: Left

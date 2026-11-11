@@ -1,0 +1,12 @@
+#!/bin/sh
+# Stop the push while pinned dependencies have updates (enable with: git config core.hooksPath .githooks).
+# Only a failed check (no network) lets the push through. Skip once: git push --no-verify
+"$(git rev-parse --show-toplevel)/tools/check-updates.sh"
+case $? in
+0) ;;
+1)
+    echo "pre-push: update the dependencies above first, or push anyway with: git push --no-verify" >&2
+    exit 1
+    ;;
+*) echo "pre-push: could not check for updates, pushing anyway" >&2 ;;
+esac

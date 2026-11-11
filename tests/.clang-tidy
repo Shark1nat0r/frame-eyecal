@@ -1,0 +1,3 @@
+InheritParentConfig: true
+# TEST() registers each test through a static object
+Checks: -bugprone-throwing-static-initialization

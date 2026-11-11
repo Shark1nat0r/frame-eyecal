@@ -1,0 +1,7 @@
+-xc++
+-std=c++17
+-Ibuild/sdk
+-I/usr/include/freetype2
+-Wall
+-Wextra
+-Wno-missing-field-initializers

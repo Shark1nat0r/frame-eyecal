@@ -1,0 +1,9 @@
+g++
+libc6-dev
+libvulkan-dev
+libopenxr-dev
+libfreetype-dev
+libpng-dev
+patchelf
+curl
+ca-certificates

@@ -1,0 +1,36 @@
+# Project rules for the C++ sources; the registry rulesets in tools/lint.sh cover the workflow, Containerfile and secrets.
+rules:
+  - id: unbounded-string-copy
+    languages: [cpp]
+    severity: ERROR
+    message: Unbounded copy into a fixed buffer. Use snprintf(buf, sizeof buf, "%s", ...) or std::string.
+    pattern-either:
+      - pattern: strcpy(...)
+      - pattern: strcat(...)
+      - pattern: sprintf(...)
+      - pattern: vsprintf(...)
+      - pattern: gets(...)
+  - id: shell-command
+    languages: [cpp]
+    severity: ERROR
+    message: Runs a shell. Start programs with fork/exec and an argument list instead.
+    pattern-either:
+      - pattern: system(...)
+      - pattern: popen(...)
+  - id: scanf-unbounded-string
+    languages: [cpp]
+    severity: ERROR
+    message: '%s without a width can overflow the buffer; give it one, like %63s.'
+    pattern-either:
+      - pattern-regex: \bs?scanf\s*\([^;]*"[^"]*%s
+      - pattern-regex: \bfscanf\s*\([^;]*"[^"]*%s
+  - id: vr-init-unchecked
+    languages: [cpp]
+    severity: ERROR
+    message: Check the error that VR_Init reports before using any OpenVR interface.
+    patterns:
+      - pattern: vr::VR_Init(&$E, ...);
+      - pattern-not-inside: |
+          vr::VR_Init(&$E, ...);
+          ...
+          if (<... $E ...>) ...
