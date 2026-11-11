@@ -25,6 +25,20 @@ struct TrackerLog {
     std::vector<std::string> poll(); // the lines written since the last call
 };
 
+// The eye tracker keeps the last 7 accepted calibration clicks per eye (SteamVR 2.18.2).
+inline constexpr int kTrackerKeeps = 7;
+
+// The tracker's kept clicks, oldest first, as far as an app can follow them: adds an accepted click (a target
+// index, or -1 for one that was not on a calibration target) and drops the oldest beyond kTrackerKeeps.
+// Returns the target it dropped, -1 if none.
+inline int keep_click(std::vector<int> &kept, int target) {
+    kept.push_back(target);
+    if (kept.size() <= static_cast<size_t>(kTrackerKeeps)) return -1;
+    const int dropped = kept.front();
+    kept.erase(kept.begin());
+    return dropped;
+}
+
 // Why the tracker rejected a calibration click
 enum class Reject { NONE, SLOW, EYES, POINTER, OTHER };
 

@@ -33,7 +33,12 @@ curl -fsSL https://raw.githubusercontent.com/Shark1nat0r/frame-eyecal/main/insta
 ```
 
 Then start **Frame-EyeCal** from the SteamVR dashboard under **+**. A new entry can need a headset restart.
-To update, run the same line again.
+
+## Update
+
+Run the install line again in Konsole. It replaces the app with the latest release and keeps your test results;
+it prints the old and the new version. If Frame-EyeCal is running, the update closes it. The menu shows the
+installed version at the bottom right.
 
 ## Uninstall
 
@@ -48,7 +53,7 @@ This removes the app, your test results and the settings SteamVR stored for it.
 - **Test accuracy:** look at a dot in 9 directions, each twice (about 45 seconds, no clicking). You get the error
   in degrees for each direction.
 - **Calibrate:** point the laser at each square, look at the laser dot and click. The tracker keeps the
-  last 8 good clicks until SteamVR restarts.
+  last 7 good clicks until SteamVR restarts.
 - **Compare:** test, calibrate and test again. If you use lens inserts, do this with and without them
   and set **Lens inserts** in the menu to match. A test only counts as "not calibrated" right after a
   SteamVR restart. Open the app with slow clicks then (hold the trigger half a second), or a dashboard
@@ -58,9 +63,10 @@ This removes the app, your test results and the settings SteamVR stored for it.
 ## How it works
 
 The Frame's eye tracker calibrates itself from laser clicks on SteamVR menus and overlays, not from clicks
-inside games: it assumes you looked at the point you clicked, and keeps the last 8 good clicks until SteamVR
-restarts. Frame-EyeCal adds no calibration of its own. **Calibrate** collects 9 good clicks, so the tracker's
-last 8 all come from it, and the test measures the result.
+inside games: it assumes you looked at the point you clicked, and keeps the last 7 good clicks until SteamVR
+restarts. Frame-EyeCal adds no calibration of its own. **Calibrate** collects 7 good clicks, at the four corners, left,
+right and the centre: exactly as many as the tracker keeps, so afterwards all of them come from it, and the test
+measures the result.
 
 Valve does not document this; it was found by testing on SteamVR 2.18.2. On the Frame, SteamVR and its eye
 tracker come with SteamOS, so any SteamOS update can change how it works. Each saved test records the

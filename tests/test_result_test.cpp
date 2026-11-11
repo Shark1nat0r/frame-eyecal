@@ -106,12 +106,25 @@ TEST(load_results_without_file_keeps_defaults) {
     CHECK(inserts && got[0][0].when == 0);
 }
 
+TEST(shown_change_matches_the_rounded_numbers) {
+    CHECK_NEAR(shown_change(4.754, 1.843), 3.0, 1e-9); // shown as 4.8° and 1.8°, not 2.9 (4.754 - 1.843)
+    CHECK_NEAR(shown_change(1.934, 1.843), 0.1, 1e-9);
+    CHECK_NEAR(shown_change(1.843, 4.754), -3.0, 1e-9); // worse
+    CHECK_NEAR(shown_change(2.04, 1.96), 0.0, 1e-9); // both shown as 2.0°
+    for (const double v : {0.25, 1.15, 2.25, 2.35, 9.95, 0.05}) { // halves: must match what %.1f prints
+        const double shown = atof(acc_str(v).c_str());
+        CHECK_NEAR(shown_change(v, 0), shown, 1e-9);
+    }
+    CHECK_NEAR(shown_change(2.250, 1.843), 0.4, 1e-9); // 2.2 and 1.8 on screen
+}
+
 TEST(condition_slot_rules) {
     CHECK(condition_slot(false, 0, false, false) == -1); // no tracker log: unknown
     CHECK(condition_slot(true, 0, false, false) == 0); // not calibrated, no inserts
     CHECK(condition_slot(true, 0, false, true) == 2); // not calibrated, inserts
     CHECK(condition_slot(true, 3, false, false) == -1); // partly calibrated
-    CHECK(condition_slot(true, 8, false, false) == 1); // calibrated
-    CHECK(condition_slot(true, 12, false, true) == 3); // more than 8 clicks: still calibrated
-    CHECK(condition_slot(true, 8, true, true) == -1); // calibrated with the other lenses
+    CHECK(condition_slot(true, 6, false, false) == -1); // one short of the tracker's 7
+    CHECK(condition_slot(true, 7, false, false) == 1); // calibrated
+    CHECK(condition_slot(true, 12, false, true) == 3); // more than 7 clicks: still calibrated
+    CHECK(condition_slot(true, 7, true, true) == -1); // calibrated with the other lenses
 }

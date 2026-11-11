@@ -269,18 +269,27 @@ void Ui::on_tracker_line(const TrackerLine &e, double t) {
         pre_accepts += initial;
     }
     dirty |= e.accept || e.fps >= 0;
-    if (initial || screen != Screen::CAL || pending == 0 || (!e.accept && e.reject == Reject::NONE)) return;
+    if (!initial && screen == Screen::CAL) on_cal_verdict(e, t);
+}
+
+void Ui::on_cal_verdict(const TrackerLine &e, double t) {
+    if (e.accept && pending == 0) { // accepted, but not a click on the square: a second tap, or one beside it
+        cal_keep(-1);
+        return;
+    }
+    if (pending == 0 || (!e.accept && e.reject == Reject::NONE)) return;
     pending = 0;
     if (e.accept) {
         sum_l += acos(std::min(e.lf, 1.0)) / kDeg;
         sum_r += acos(std::min(e.rf, 1.0)) / kDeg;
         accepted++;
-        done_t[cur_target()] = true;
         fails_here = 0;
         flash_col = kGood;
         flash_t = t;
-        msg = fmt("Accepted (%d/9)", accepted);
-        msg_col = kGood;
+        if (!cal_keep(cur_target())) {
+            msg = fmt("Accepted (%d/%d)", kept_points(), kCalPositions);
+            msg_col = kGood;
+        }
         if (!next_open()) {
             cal_stale = false;
             go(Screen::CAL_DONE);
@@ -319,10 +328,21 @@ void Ui::on_tracker_line(const TrackerLine &e, double t) {
     dirty = true;
 }
 
+static_assert(kCalPositions == kTrackerKeeps, "calibrate as many positions as the tracker keeps clicks");
+
+bool Ui::cal_keep(int target) {
+    const int dropped = keep_click(cal_kept, target);
+    if (dropped < 0 || kept(dropped)) return false;
+    msg = "An extra click pushed out a point, it comes again";
+    msg_col = kWarn;
+    dirty = true;
+    return true;
+}
+
 bool Ui::next_open() {
-    for (int k = 1; k <= 9; k++)
-        if (!done_t[kCalOrder[(step + k) % 9]]) {
-            step = (step + k) % 9;
+    for (int k = 1; k <= kCalPositions; k++)
+        if (!kept(kCalOrder[(step + k) % kCalPositions])) {
+            step = (step + k) % kCalPositions;
             return true;
         }
     return false;
@@ -418,7 +438,7 @@ void Ui::act(const std::string &id) {
         }
         dirty = true;
     } else if (id == "cal_start") {
-        std::fill(done_t, done_t + 9, false);
+        cal_kept.clear();
         step = attempts = accepted = fails_here = n_slow = n_eyes = n_pointer = n_other = 0;
         pending = sum_l = sum_r = 0;
         cal_start = now_s();

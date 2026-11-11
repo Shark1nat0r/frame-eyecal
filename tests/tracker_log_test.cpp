@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <string>
 #include <unistd.h>
+#include <vector>
 
 #include "../src/tracker_log.h"
 #include "check.h"
@@ -77,4 +78,12 @@ TEST(tracker_log_waits_for_the_file) {
     TrackerLog log("/nonexistent/eyetracking.txt");
     log.skip();
     CHECK(log.poll().empty());
+}
+
+TEST(keep_click_drops_the_oldest_beyond_what_the_tracker_keeps) {
+    std::vector<int> kept;
+    for (int k = 0; k < kTrackerKeeps; k++) CHECK(keep_click(kept, k) == -1);
+    CHECK(kept.size() == static_cast<size_t>(kTrackerKeeps) && kept.front() == 0);
+    CHECK(keep_click(kept, -1) == 0); // an extra accepted click pushes out the first calibration click
+    CHECK(kept.size() == static_cast<size_t>(kTrackerKeeps) && kept.front() == 1 && kept.back() == -1);
 }

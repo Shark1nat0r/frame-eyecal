@@ -6,6 +6,7 @@
 #include "common.h"
 #include "targets.h"
 #include "test_result.h"
+#include "tracker_log.h"
 #include "ui.h"
 
 int Ui::preview(const std::string &pdir) {
@@ -24,8 +25,7 @@ int Ui::preview(const std::string &pdir) {
     dump("cal_intro");
     screen = Screen::TEST_INTRO;
     dump("test_intro");
-    std::fill(done_t, done_t + 9, false);
-    done_t[kCalOrder[0]] = done_t[kCalOrder[1]] = true;
+    cal_kept = {kCalOrder[0], kCalOrder[1]};
     step = 2;
     attempts = 5;
     msg = "Eyes moved, keep looking at the dot";
@@ -38,8 +38,9 @@ int Ui::preview(const std::string &pdir) {
     n_eyes = 3;
     n_slow = 1;
     n_pointer = 1;
-    sum_l = 9 * 1.2;
-    sum_r = 9 * 1.6;
+    accepted = kTrackerKeeps;
+    sum_l = kTrackerKeeps * 1.2;
+    sum_r = kTrackerKeeps * 1.6;
     cal_start = now_s() - 48;
     screen = Screen::CAL_DONE;
     dump("cal_done");
@@ -101,7 +102,7 @@ int Ui::preview(const std::string &pdir) {
     accepts_since_start = 0;
     screen = Screen::MENU;
     dump("menu_start");
-    accepts_since_start = 9;
+    accepts_since_start = kTrackerKeeps;
     screen = Screen::TEST_INTRO;
     dump("test_intro_cal");
     accepts_since_start = pre_accepts = 1;

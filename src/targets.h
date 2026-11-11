@@ -11,8 +11,11 @@ struct Target {
 };
 inline constexpr Target kTargets[9] = {{0, 0},  {-15, 10}, {15, 10}, {15, -10}, {-15, -10},
                                        {0, 10}, {15, 0},   {0, -10}, {-15, 0}};
-// Calibration order: the tracker keeps the last 8, so the first one (a corner) is the one that falls out.
-inline constexpr int kCalOrder[9] = {1, 5, 2, 6, 3, 7, 4, 8, 0};
+// Calibration positions, in order: top left, top right, right, bottom right, bottom left, left, centre. As many as
+// the tracker keeps (kTrackerKeeps, checked in ui.cpp), so afterwards all of its clicks come from the calibration.
+// Top and bottom centre are only tested.
+inline constexpr int kCalOrder[] = {1, 2, 6, 3, 4, 8, 0};
+inline constexpr int kCalPositions = sizeof kCalOrder / sizeof kCalOrder[0];
 // Test order: every position twice, the second round in another order. A position counts as unsure
 // when its two looks are more than kUnsure degrees apart.
 inline constexpr int kLooks = 18;

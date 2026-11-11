@@ -4,6 +4,7 @@
 
 #include <openvr.h>
 
+#include <algorithm>
 #include <cmath>
 #include <string>
 #include <utility>
@@ -115,7 +116,18 @@ class Ui {
     bool passthrough = false; // the panel hides while passthrough (room view) is on
 
     // calibration state
-    bool done_t[9] = {};
+    std::vector<int> cal_kept; // the tracker's kept clicks since the calibration started (keep_click)
+    // a target is done while its click is among the tracker's kept ones
+    [[nodiscard]] bool kept(int target) const {
+        return std::find(cal_kept.begin(), cal_kept.end(), target) != cal_kept.end();
+    }
+    [[nodiscard]] int kept_points() const {
+        return static_cast<int>(std::count_if(cal_kept.begin(), cal_kept.end(), [](int k) { return k >= 0; }));
+    }
+    // an accepted click (-1: not on the square); true, with a warning shown, when it pushed out a point
+    bool cal_keep(int target);
+    void on_cal_verdict(const TrackerLine &e, double t); // a tracker log line during calibration
+    // accepted: all accepted clicks of this calibration, also those pushed out since (eye movement average)
     int step = 0, attempts = 0, accepted = 0, fails_here = 0, n_slow = 0, n_eyes = 0, n_pointer = 0, n_other = 0;
     double pending = 0, cal_start = 0, sum_l = 0, sum_r = 0;
     std::string msg;

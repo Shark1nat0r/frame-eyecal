@@ -1,7 +1,7 @@
 // frame-eyecal: eye-tracking calibration and accuracy test for the Steam Frame (native Linux ARM64).
 //
 // The Frame's eye tracker calibrates itself from laser clicks ("usercal"): when you click something, it assumes
-// you were looking at the click point. It keeps the last 8 good clicks, in memory only (lost when SteamVR
+// you were looking at the click point. It keeps the last 7 good clicks, in memory only (lost when SteamVR
 // restarts), and it rejects almost every click while the eye cameras run at 15 fps, which they do whenever
 // no app reads the gaze.
 //

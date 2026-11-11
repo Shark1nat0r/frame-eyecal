@@ -11,6 +11,7 @@
 #include "common.h"
 #include "targets.h"
 #include "test_result.h"
+#include "tracker_log.h"
 #include "ui.h"
 
 static const char *kCond[2][2] = {{"No inserts, not calibrated", "No inserts, calibrated"},
@@ -38,7 +39,7 @@ static std::string eyes_lost(int l, int r) { // the tracker's per-eye dropouts, 
     if (!l || !r) return fmt("%s eye %d×", l ? "left" : "right", l ? l : r);
     return fmt("left eye %d×, right eye %d×", l, r);
 }
-static std::string change(double d) { return fmt("%.1f° %s", fabs(d), d >= 0 ? "better" : "worse"); } // d > 0: better
+static std::string change(double d) { return acc_str(fabs(d)) + "° " + (d >= 0 ? "better" : "worse"); } // d > 0: better
 static std::string join(const std::vector<std::string> &v) { // a, b and c
     std::string s;
     for (size_t j = 0; j < v.size(); j++) {
@@ -130,9 +131,9 @@ Ui::MenuStatus Ui::menu_status() const { // the status, and the next step of the
     }
     if (cal_stale) return {"Calibrated with other lenses", "Calibrate again", "cal", kWarn};
     if (slot_now() < 0)
-        return {fmt("Partly calibrated: %d of 8 clicks", accepts_since_start),
+        return {fmt("Partly calibrated: %d of %d clicks", accepts_since_start, kTrackerKeeps),
                 pre_accepts == accepts_since_start ? "Clicks before the app opened counted. See Help."
-                                                   : "Calibrate to fill all 8",
+                                                   : fmt("Calibrate to fill all %d", kTrackerKeeps),
                 "cal", kWarn};
     if (res[inserts][1].when == 0) return {"Calibrated", "Test now to see what calibration changed", "test", kGood};
     return {"Calibrated",
@@ -178,16 +179,16 @@ void Ui::draw_intro(Canvas &c) { // before calibration or a test
     lens(c, 515, kMargin, kTex - kMargin);
     if (!cal) saved_as(c, 625, kMargin);
     else if (accepts_since_start > 0 && log_seen)
-        c.para(fmt("Replaces the %d click%s the tracker has now.", std::min(accepts_since_start, 8),
+        c.para(fmt("Replaces the %d click%s the tracker has now.", std::min(accepts_since_start, kTrackerKeeps),
                    accepts_since_start == 1 ? "" : "s"),
                625, 3, kDim, kMargin);
     two(cal ? "cal_start" : "test_start", "Start", Kind::PRIMARY, "menu", "Menu", Kind::NORMAL);
 }
 
 void Ui::draw_cal(Canvas &c) {
-    for (int i = 0; i < 9; i++) { // progress, in calibration order
-        const int x = kTex / 2 + (i - 4) * 40 - 14;
-        c.fill(x, 30, x + 28, 46, done_t[kCalOrder[i]] ? kGood : Col{80, 80, 84});
+    for (int i = 0; i < kCalPositions; i++) { // progress, in calibration order
+        const int x = kTex / 2 + (2 * i - (kCalPositions - 1)) * 20 - 14;
+        c.fill(x, 30, x + 28, 46, kept(kCalOrder[i]) ? kGood : Col{80, 80, 84});
     }
     c.text(msg, kTex / 2, 76, 3, msg_col);
     if (cam_fps > 0 && cam_fps < 30)
@@ -201,7 +202,8 @@ void Ui::draw_cal(Canvas &c) {
 
 void Ui::draw_cal_done(Canvas &c) {
     c.text("Calibrated", kTex / 2, 60, 6, kGood);
-    c.text(fmt("9 points in %d clicks, %.0f seconds", attempts, now_s() - cal_start), kTex / 2, 180, 4, kText);
+    c.text(fmt("%d points in %d clicks, %.0f seconds", kCalPositions, attempts, now_s() - cal_start), kTex / 2, 180, 4,
+           kText);
     std::string rej;
     auto add = [&](int n, const char *what) {
         if (n) rej += (rej.empty() ? "" : ", ") + fmt("%d %s", n, what);
@@ -211,15 +213,16 @@ void Ui::draw_cal_done(Canvas &c) {
     add(n_pointer, "hand moved");
     add(n_other, "other");
     c.text(rej.empty() ? "No clicks rejected" : "Rejected: " + rej, kTex / 2, 260, 3, kDim);
-    c.text(fmt("Eye movement during clicks: left %.1f°, right %.1f° (limit 5°)", sum_l / 9, sum_r / 9), kTex / 2, 305,
-           3, kDim);
+    c.text(fmt("Eye movement during clicks: left %.1f°, right %.1f° (limit 5°)", sum_l / std::max(accepted, 1),
+               sum_r / std::max(accepted, 1)),
+           kTex / 2, 305, 3, kDim);
     c.text("The tracker uses these clicks until SteamVR restarts.", kTex / 2, 420, 3, kText);
     c.text("Test now to see what calibration changed.", kTex / 2, 462, 3, kText);
     two("test_start", "Test accuracy", Kind::PRIMARY, "menu", "Menu", Kind::NORMAL);
 }
 
 void Ui::draw_test_done(Canvas &c) {
-    c.text(fmt("Accuracy %.1f°", last.acc), kTex / 2, 50, 6, rating_col(last.acc));
+    c.text("Accuracy " + acc_str(last.acc) + "°", kTex / 2, 50, 6, rating_col(last.acc));
     c.text(rating(last.acc), kTex / 2, 120, 4, rating_col(last.acc));
     grid(c, last.per, last.unsure, kTex / 2 - 3 * 156 / 2 - 6, 180, 156, 64, 3);
     c.text(last.unsure ? kLooksDiffered : "Error per direction, lower is better", kTex / 2, 400, 3,
@@ -246,16 +249,17 @@ void Ui::draw_test_done(Canvas &c) {
         c.text("Saved as: " + std::string(kCond[ins][last_slot % 2]), kTex / 2, y, 3, kText);
         next_cal = last_slot % 2 == 0;
         if (res[ins][1 - last_slot % 2].when > 0) {
-            const double d = res[ins][0].acc - res[ins][1].acc;
+            const double d = shown_change(res[ins][0].acc, res[ins][1].acc);
             c.text("Calibration: " + change(d), kTex / 2, y + 42, 3, d >= 0 ? kGood : kWarn);
         } else if (next_cal) {
             c.text("Next: calibrate, then test again", kTex / 2, y + 42, 3, kText);
         }
     } else {
-        c.text(accepts_since_start > 0 && accepts_since_start < 8
-                   ? "Not saved: partly calibrated. Restart SteamVR or calibrate."
-                   : "Not saved: calibrated with the other lenses.",
-               kTex / 2, y, 3, kWarn);
+        const char *why = "Not saved: calibrated with the other lenses.";
+        if (!log_seen) why = "Not saved: the eye tracker's log was not found.";
+        else if (accepts_since_start > 0 && accepts_since_start < kTrackerKeeps)
+            why = "Not saved: partly calibrated. Restart SteamVR or calibrate.";
+        c.text(why, kTex / 2, y, 3, kWarn);
     }
     const int by = kTex - 200;
     btn(by, "test_start", "Test again", 40, 250);
@@ -289,7 +293,7 @@ static bool compare_column(Canvas &c, int j, const TestResult &x, bool share) {
         for (const int r : kRowY) c.text("-", col_x(j), r, 3, kDim);
         return false;
     }
-    c.text(fmt("%.1f°", x.acc), col_x(j), 206, 5, rating_col(x.acc));
+    c.text(acc_str(x.acc) + "°", col_x(j), 206, 5, rating_col(x.acc));
     grid(c, x.per, x.unsure, col_x(j) - 90, 282, 56, 44, 2);
     const int lost = x.drop_l + x.drop_r;
     c.text(fmt("%.1f°", x.prec), col_x(j), kRowY[0], 3, kText);
@@ -325,7 +329,7 @@ void Ui::draw_compare(Canvas &c, bool share) {
             c.text("-", col_x(j), y, 3, kDim);
             return;
         }
-        const double d = base.acc - at(j).acc; // > 0: better
+        const double d = shown_change(base.acc, at(j).acc); // > 0: better
         c.text(change(d), col_x(j), y, 3, d >= 0 ? kGood : kWarn);
     };
     delta(1, 652, at(0));
@@ -382,9 +386,9 @@ void Ui::draw_help(Canvas &c) {
     y = c.para("Results depend on fit: reseating the headset changes them.", y + 4, 3, kDim, 70);
     c.text("How calibration works", 70, y + 40, 4, kText, false);
     y += 100;
-    for (const char *p :
-         {"Short laser clicks on SteamVR menus calibrate the tracker", "It keeps the last 8 until SteamVR restarts",
-          "Most fail when no app uses eye tracking (reduced fps)"}) {
+    for (const std::string &p : {std::string("Short laser clicks on SteamVR menus calibrate the tracker"),
+                                 fmt("It keeps the last %d until SteamVR restarts", kTrackerKeeps),
+                                 std::string("Most fail when no app uses eye tracking (reduced fps)")}) {
         c.text("•", 90, y, 3, kText, false);
         y = c.para(p, y, 3, kText, 70, 120) + 6;
     }
@@ -395,8 +399,10 @@ void Ui::draw_help(Canvas &c) {
 void Ui::draw_terms(Canvas &c) {
     c.text("Glossary", kTex / 2, 60, 6, kText);
     int y = 190;
+    const std::string calibrated =
+        fmt("The tracker has %d good clicks. Partly: 1 to %d", kTrackerKeeps, kTrackerKeeps - 1);
     for (auto [term, what] : std::initializer_list<std::pair<const char *, const char *>>{
-             {"Calibrated", "The tracker has 8 good clicks. Partly: 1 to 7"},
+             {"Calibrated", calibrated.c_str()},
              {"Accuracy", "How far the gaze is from where you look"},
              {"Degrees", "2° is about your thumb's width at arm's length"},
              {"Jitter", "How much the tracked gaze wobbles"},
